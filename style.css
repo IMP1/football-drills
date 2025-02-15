@@ -19,6 +19,10 @@ kbd {
     white-space: nowrap;
 }
 
+summary {
+    cursor: pointer;
+}
+
 main {
     width: 50%;
     min-width: 640px;
@@ -246,5 +250,46 @@ body {
 
 #current-note-text {
 /*    font-weight: bold;*/
+    margin-top: 16rem;
+    font-size: 1.2em;
     font-style: italic;
 }
+
+#field .player.selected circle {
+    stroke-width: 3px;
+    -webkit-filter: drop-shadow( 0px 0px 2px rgba(255, 255, 255, .7));
+    filter: drop-shadow( 0px 0px 2px rgba(255, 255, 255, .7));
+}
+#field .player.selected[data-role="1"] circle {
+    stroke-width: 3px;
+    -webkit-filter: drop-shadow( 0px 0px 2px rgba(64, 128, 255, .7));
+    filter: drop-shadow( 0px 0px 2px rgba(64, 128, 255, .7));
+}
+
+#field .cone.selected {
+    stroke-width: 2;
+    -webkit-filter: drop-shadow( 0px 0px 2px rgba(0, 0, 0, 1));
+    filter: drop-shadow( 0px 0px 2px rgba(0, 0, 0, 1));
+}
+
+#field .ball.selected {
+    stroke-width: 3;
+    -webkit-filter: drop-shadow( 0px 0px 2px rgba(0, 0, 0, 1));
+    filter: drop-shadow( 0px 0px 2px rgba(0, 0, 0, 1));
+}
+
+#timeline-events .note.selected {
+/*    height: 64px;*/
+    y: -6px;
+    -webkit-filter: drop-shadow( 0px 0px 6px rgba(255, 255, 128, 1));
+    filter: drop-shadow( 0px 0px 6px rgba(255, 255, 128, 1));
+}
+
+#timeline-events .movement.selected {
+    stroke-width: 3;
+    -webkit-filter: drop-shadow( 0px 0px 4px rgba(255, 255, 128, 1));
+    filter: drop-shadow( 0px 0px 4px rgba(255, 255, 128, 1));
+    r: 10px;
+}
+
+/* TODO: Style selected player/ball/cone/note/motion */

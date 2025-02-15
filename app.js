@@ -86,6 +86,17 @@ let notes = [];
 let setupPositions = {};
 let timeline = {};
 
+function deselectAll() {
+    for (const list of document.getElementById("selected-item").getElementsByTagName("ul")[0].children) {
+        list.classList.remove("visible");
+    }
+    document.getElementById("selected-item").classList.remove("visible");
+    if (selectedElement) {
+        selectedElement.classList.remove("selected");
+    }
+    selectedElement = null;
+}
+
 function selectElement(target) {
     let isGroup = false;
     if (!target.classList.contains(SELECTABLE_CLASS)) {
@@ -96,9 +107,7 @@ function selectElement(target) {
         }
     }
 
-    if (selectedElement) {
-        selectedElement.classList.remove("selected");
-    }
+    deselectAll();
     selectedElement = target;
     if (isGroup) {
         selectedElement = target.parentNode;
@@ -209,11 +218,6 @@ function selectElement(target) {
 function deleteSelectedItem() {
     if (!selectedElement) return;
 
-    for (const list of document.getElementById("selected-item").getElementsByTagName("ul")[0].children) {
-        list.classList.remove("visible");
-    }
-    document.getElementById("selected-item").classList.remove("visible");
-
     console.log("Deleting selected item");
     if (selectedElement.classList.contains("player")) {
 
@@ -263,8 +267,8 @@ function deleteSelectedItem() {
         console.log(event);
         timeline[selectedElement.dataset.eventTime].splice(selectedElement.dataset.eventIndex, 1);
         refreshTimelineEvents();
-
     }
+    deselectAll();
 }
 
 function startDrag(evt) {
@@ -419,6 +423,7 @@ function addPlayer() {
     for (const b of balls) {
         b.parentNode.appendChild(b);
     }
+    selectElement(player);
 }
 
 function addCone() {
@@ -443,6 +448,7 @@ function addCone() {
     for (const b of balls) {
         b.parentNode.appendChild(b);
     }
+    selectElement(cone);
 }
 
 function addBall() {
@@ -458,6 +464,7 @@ function addBall() {
     field.appendChild(ball);
     balls.push(ball);
     moveObject(ball, 100, 200);
+    selectElement(ball);
 }
 
 function addNote() {
@@ -490,7 +497,14 @@ function addNote() {
         "endTime": endTime
     });
     refreshTimelineEvents();
-    refreshCurrentNote()
+    refreshCurrentNote();
+    // Select new note
+    const eventsAtTime = [...document.getElementById("timeline-events").getElementsByClassName("note")].filter(function(img) {
+        return parseFloat(img.dataset.eventTime) === time;
+    });
+    console.log(eventsAtTime);
+    const icon = eventsAtTime[eventsAtTime.length - 1];
+    selectElement(icon);
 }
 
 function addPass(ball, time, origin, destination) {
@@ -524,6 +538,17 @@ function addMovement(type, entity, time, origin, destination, speed) {
         bar.max = time + duration;
     }
     refreshTimelineEvents();
+    // Select new motion
+    const eventsAtTime = [...document.getElementById("timeline-events").children].filter(function(img) {
+        console.log(img.dataset.eventTime);
+        console.log(typeof(img.dataset.eventTime));
+        console.log(time);
+        console.log(typeof(time));
+        return parseFloat(img.dataset.eventTime) === time;
+    });
+    console.log(eventsAtTime);
+    const icon = eventsAtTime[eventsAtTime.length - 1];
+    selectElement(icon);
 }
 
 function addPause(time, duration) {
@@ -811,11 +836,29 @@ function setup() {
     document.getElementById("timeline-bar").addEventListener("input", function() { scrubToTime(document.getElementById("timeline-bar").value); });
     document.getElementById("delete-selected-item").addEventListener("click", deleteSelectedItem);
     addEventListener("resize", refreshTimelineEvents);
+    document.addEventListener("keydown", function(evt) {
+        evt = evt || window.event;
+        var isEscape = false;
+        if ("key" in evt) {
+            isEscape = (evt.key === "Escape" || evt.key === "Esc");
+        } else {
+            isEscape = (evt.keyCode === 27);
+        }
+        if (isEscape) {
+            deselectAll();
+        }
+    });
 
     if (!loadDrillFromUrl()) {
         addPlayer();
         addBall();        
+        for (const list of document.getElementById("selected-item").getElementsByTagName("ul")[0].children) {
+            list.classList.remove("visible");
+        }
+        document.getElementById("selected-item").classList.remove("visible");
     }
+
+
 }
 
 setup();
