@@ -802,6 +802,7 @@ function loadDrillFromUrl() {
     refreshCurrentNote();
     document.getElementById("timeline-bar").value = 0;
     scrubToTime(0);
+    deselectAll();
 
     return true;
 }
@@ -852,12 +853,8 @@ function setup() {
     if (!loadDrillFromUrl()) {
         addPlayer();
         addBall();        
-        for (const list of document.getElementById("selected-item").getElementsByTagName("ul")[0].children) {
-            list.classList.remove("visible");
-        }
-        document.getElementById("selected-item").classList.remove("visible");
+        deselectAll();
     }
-
 
 }
 
