@@ -656,6 +656,9 @@ function refreshCurrentNote() {
 }
 
 function scrubToTime(time) {
+
+    // TODO: Show upcoming movements in dashed lines
+
     settingUp = (time == 0);
 
     for (let entityId of Object.keys(setupPositions)) {
