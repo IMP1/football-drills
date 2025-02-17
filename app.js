@@ -129,8 +129,6 @@ function selectElement(target) {
         selectedElement = target.parentNode;
     }
     selectedElement.classList.add("selected");
-    console.log("Selecting element");
-    console.log(selectedElement);
 
     for (const list of document.getElementById("selected-item").getElementsByTagName("ul")[0].children) {
         list.classList.remove("visible");
@@ -234,7 +232,6 @@ function selectElement(target) {
 function deleteSelectedItem() {
     if (!selectedElement) return;
 
-    console.log("Deleting selected item");
     if (selectedElement.classList.contains("player")) {
 
         for (const [startTime, eventList] of Object.entries(timeline)) {
@@ -280,7 +277,6 @@ function deleteSelectedItem() {
     } else if (selectedElement.classList.contains("movement")) {
         
         const event = timeline[selectedElement.dataset.eventTime][selectedElement.dataset.eventIndex];
-        console.log(event);
         timeline[selectedElement.dataset.eventTime].splice(selectedElement.dataset.eventIndex, 1);
         refreshTimelineEvents();
     }
@@ -389,7 +385,6 @@ function endMotion(evt) {
     motionIndicator.arrowElement.remove();
     motionIndicator.destination = getMousePosition(evt);
 
-    console.log(motionIndicator);
     if (motionIndicator.type === "run") {
         const player = motionIndicator.entity;
         const timeNow = time;
@@ -409,7 +404,6 @@ function endMotion(evt) {
 
 
 function addPlayer() {
-    console.log("Adding player " + (players.length + 1));
     const field = document.getElementById("field");
     const player = document.createElementNS(SVG_NS, "g");
     player.id = "player-" + (players.length + 1);
@@ -418,7 +412,6 @@ function addPlayer() {
     player.classList.add(SELECTABLE_CLASS);
     player.classList.add("player");
     player.dataset.role = PLAYER_ROLE_ATTACKER;
-    // TODO: Other player data?
     const circle = document.createElementNS(SVG_NS, "circle");
     circle.setAttribute("r", PLAYER_SIZE);
     player.appendChild(circle);
@@ -443,7 +436,6 @@ function addPlayer() {
 }
 
 function addCone() {
-    console.log("Adding cone");
     const field = document.getElementById("field");
     const cone = document.createElementNS(SVG_NS, "path");
     cone.id = "cone-" + (cones.length + 1);
@@ -468,7 +460,6 @@ function addCone() {
 }
 
 function addBall() {
-    console.log("Adding ball");
     const field = document.getElementById("field");
     const ball = document.createElementNS(SVG_NS, "circle");
     ball.id = "ball-" + (balls.length + 1);
@@ -485,7 +476,6 @@ function addBall() {
 
 function addNote() {
     // TODO: Check if there's a note at the same time, and if so don't do anything
-    console.log("Adding note");
     const time = document.getElementById("timeline-bar").valueAsNumber;
     let endTime = parseFloat(document.getElementById("timeline-bar").max);
 
@@ -518,7 +508,6 @@ function addNote() {
     const eventsAtTime = [...document.getElementById("timeline-events").getElementsByClassName("note")].filter(function(img) {
         return parseFloat(img.dataset.eventTime) === time;
     });
-    console.log(eventsAtTime);
     const icon = eventsAtTime[eventsAtTime.length - 1];
     selectElement(icon);
 }
@@ -532,7 +521,6 @@ function addRun(player, time, origin, destination) {
 }
 
 function addMovement(type, entity, time, origin, destination, speed) {
-    console.log("Adding " + type);
     const duration = getDistance(origin, destination) / speed;
     if (!timeline[time]) {
         timeline[time] = [];
@@ -556,13 +544,8 @@ function addMovement(type, entity, time, origin, destination, speed) {
     refreshTimelineEvents();
     // Select new motion
     const eventsAtTime = [...document.getElementById("timeline-events").children].filter(function(img) {
-        console.log(img.dataset.eventTime);
-        console.log(typeof(img.dataset.eventTime));
-        console.log(time);
-        console.log(typeof(time));
         return parseFloat(img.dataset.eventTime) === time;
     });
-    console.log(eventsAtTime);
     const icon = eventsAtTime[eventsAtTime.length - 1];
     selectElement(icon);
 }
@@ -647,7 +630,12 @@ function refreshTimelineEvents() {
             icon.classList.add("movement");
             icon.dataset.eventTime = startTime;
             icon.dataset.eventIndex = i;
-            icon.addEventListener("click", function() { selectElement(icon); });
+            icon.addEventListener("click", function() { 
+                selectElement(icon);
+                // Refresh timeline to highlight action (bit hacky)
+                const time = document.getElementById("timeline-bar").valueAsNumber;
+                scrubToTime(time);
+            });
             events.appendChild(icon);
             const line = document.createElementNS(SVG_NS, "line");
             line.setAttribute("x1", w * event.startTime / t + 14);
@@ -671,6 +659,8 @@ function refreshTimelineEvents() {
     timelineBar.setAttribute("y1", -32);
     timelineBar.setAttribute("x2", 0);
     timelineBar.setAttribute("y2", maxY + 24);
+
+    // TODO: BUG: This can overflow vertically
 }
 
 function refreshCurrentNote() {
@@ -684,7 +674,7 @@ function refreshCurrentNote() {
 
 function scrubToTime(time) {
 
-    function addIndicatorArrow(field, event, entity, x, y) {
+    function addIndicatorArrow(field, event, entity, x, y, highlighted=false) {
         let r = PLAYER_SIZE;
         if (event.type === MOVEMENT_TYPE_PASS) {
             r = parseFloat(entity.getAttribute("r"));
@@ -698,10 +688,10 @@ function scrubToTime(time) {
             line.classList.add(MOVEMENT_INDICATOR_CLASS);
             line.setAttribute("d", `M${ox} ${oy} L${event.destination.x} ${event.destination.y}`);
             line.setAttribute("stroke", "black");
-            line.setAttribute("stroke-width", 3);
+            line.setAttribute("stroke-width", highlighted ? 6 : 3);
             line.setAttribute("marker-end", "url(#arrow-head-black)");
             if (event.type === MOVEMENT_TYPE_RUN) {
-                line.setAttribute("stroke-dasharray", 4);
+                line.setAttribute("stroke-dasharray", highlighted ? 8 : 4);
             } else if ( event.type == MOVEMENT_TYPE_PASS) {
                 line.setAttribute("stroke", "white");
                 line.setAttribute("marker-end", "url(#arrow-head-white)");
@@ -738,7 +728,8 @@ function scrubToTime(time) {
     if (Object.keys(timeline).length === 0) return;
     while (currentTime <= time) {
         const events = timeline[currentTime];
-        for (const event of events) {
+        for (let i = 0; i < events.length; i ++) {
+            const event = events[i];
             if (event.type === MOVEMENT_TYPE_NOTE) {
                 continue;
             }
@@ -757,7 +748,13 @@ function scrubToTime(time) {
                     const scale = BALL_SIZE_AIR - Math.pow(sqrtDifference * (2 * t - 1), 2);
                     entity.setAttribute("r", scale);
                 }
-                addIndicatorArrow(field, event, entity, x, y);
+                let isArrowHighlighted = false;
+                if (selectedElement && selectedElement.classList.contains("movement")) {
+                    if (parseFloat(selectedElement.dataset.eventTime) === currentTime && selectedElement) {
+                        isArrowHighlighted = parseInt(selectedElement.dataset.eventIndex) === i;
+                    }
+                }
+                addIndicatorArrow(field, event, entity, x, y, isArrowHighlighted);
             }
         }
         if (times.filter(t => t > currentTime).length === 0) {
@@ -767,9 +764,14 @@ function scrubToTime(time) {
         currentTime = nextTime;
     }
 
+    if (times.filter(t => t > currentTime).length === 0) {
+        return; // We've done the last one
+    }
+
     while (currentTime <= time + MOVEMENT_INDICATOR_LOOKAHEAD) {
         const events = timeline[currentTime];
-        for (const event of events) {
+        for (let i = 0; i < events.length; i ++) {
+            const event = events[i];
             if (event.type === MOVEMENT_TYPE_NOTE) {
                 continue;
             }
@@ -780,7 +782,13 @@ function scrubToTime(time) {
             objectsMoving[entity.id] = true;
             const x = event.origin.x;
             const y = event.origin.y;
-            addIndicatorArrow(field, event, entity, x, y);
+            let isArrowHighlighted = false;
+            if (selectedElement && selectedElement.classList.contains("movement")) {
+                if (parseFloat(selectedElement.dataset.eventTime) === currentTime && selectedElement) {
+                    isArrowHighlighted = parseInt(selectedElement.dataset.eventIndex) === i;
+                }
+            }
+            addIndicatorArrow(field, event, entity, x, y, isArrowHighlighted);
         }
         if (times.filter(t => t > currentTime).length === 0) {
             break; // We've done the last one
@@ -789,7 +797,7 @@ function scrubToTime(time) {
         currentTime = nextTime;
     }
 
-    // TODO: BUG: The most recent arrow is drawn after the action has happened. Seems to not happen when there are notes?
+    // TODO: BUG: If there's an empty note and another note after then sometimes it doesn't show up?
 
     refreshCurrentNote();
 }

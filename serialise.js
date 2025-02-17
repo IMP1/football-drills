@@ -217,11 +217,8 @@ const DATA_PLAYER_SIZE = 4;
 const DATA_BALL_SIZE = 2;
 const DATA_MOMENT_SIZE = 12;
 
-function getDrillUrl() {
-    let url = window.location.pathname;
-    url += "?d=";
-
-    const drill = {
+function getDrillObject() {
+    return {
         height: document.getElementById("field-container").offsetHeight,
         cones: cones.map(c => ({
             id: c.id,
@@ -237,32 +234,11 @@ function getDrillUrl() {
         setupPositions: setupPositions,
         timeline: timeline,
         duration: document.getElementById("timeline-bar").max
-    }
-
-    console.log(JSON.stringify(drill));
-    url += encodeURIComponent(crush(JSON.stringify(drill)));
-    window.open(url);
-    return url;
+    };
 }
 
-function loadDrillFromUrl() {
-    const queryString = window.location.search;
-    if (!queryString) return false;
-    const urlParams = new URLSearchParams(queryString);
-    if (!urlParams.has("d")) return false;
-    const drillString = urlParams.get("d");
-    console.log(drillString);
-    const drillJson = uncrush(drillString);
-    console.log(drillJson);
-    const drill = JSON.parse(drillJson);
-    
-    console.log(drill);
-
-    console.log(document.getElementById("field-container"));
+function setStateFromDrillObject(drill) {
     document.getElementById("field-container").style.height = "" + drill.height + "px";
-    console.log("" + drill.height + "px");
-    console.log(document.getElementById("field-container"));
-
     for (let i = 0; i < drill.cones.length; i ++) {
         addCone();
     }
@@ -271,19 +247,15 @@ function loadDrillFromUrl() {
         cone.id = drill.cones[i].id;
         cone.dataset.colour = drill.cones[i].colour;
     }
-
     for (let i = 0; i < drill.players.length; i ++) {
         addPlayer();
     }
-    console.log(drill.players);
     for (let i = 0; i < drill.players.length; i ++) {
-        console.log(drill.players[i]);
         const player = players[i];
         player.id = drill.players[i].id;
         player.dataset.role = drill.players[i].role;
         player.getElementsByTagName("text")[0].textContent = drill.players[i].number;
     }
-
     for (let i = 0; i < drill.balls; i ++) {
         addBall();
     }
@@ -297,6 +269,38 @@ function loadDrillFromUrl() {
     document.getElementById("timeline-bar").value = 0;
     scrubToTime(0);
     deselectAll();
+}
+
+function getDrillUrl() {
+    let url = window.location.pathname;
+    url += "?d=";
+    const drill = getDrillObject();
+    url += encodeURIComponent(crush(JSON.stringify(drill)));
+    window.open(url);
+    return url;
+}
+
+function loadDrillFromUrl() {
+    const queryString = window.location.search;
+    if (!queryString) return false;
+    const urlParams = new URLSearchParams(queryString);
+    if (!urlParams.has("d")) return false;
+    const drillString = urlParams.get("d");
+    const drillJson = uncrush(drillString);
+    const drill = JSON.parse(drillJson);
+
+    setStateFromDrillObject(drill);
 
     return true;
 }
+
+function exportDrillJson() {
+    const drill = getDrillObject();
+    console.log(JSON.stringify(drill));
+    // TODO: Show popup to copy JSON from
+}
+
+function importDrillJson() {
+    // TODO: Show popup to paste JSON into
+}
+

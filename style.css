@@ -253,12 +253,21 @@ body {
 }
 
 #field .player[data-role="1"] circle {
-    fill: pink;
-    stroke: skyblue;
+    fill: skyblue;
+    stroke: white;
 }
 
 #field .player[data-role="1"] text {
-    color: skyblue;
+    color: black;
+}
+
+#field .player[data-role="2"] circle {
+    fill: pink;
+    stroke: white;
+}
+
+#field .player[data-role="2"] text {
+    color: black;
 }
 
 #arrow-head-white {
@@ -322,4 +331,8 @@ body {
 #timeline-position {
     stroke: blue;
     stroke-width: 1;
+}
+
+.movement-indicator.highlighted {
+    
 }
