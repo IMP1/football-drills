@@ -789,115 +789,11 @@ function scrubToTime(time) {
         currentTime = nextTime;
     }
 
+    // TODO: BUG: The most recent arrow is drawn after the action has happened. Seems to not happen when there are notes?
+
     refreshCurrentNote();
 }
 
-
-// From https://stackoverflow.com/questions/30106476/using-javascripts-atob-to-decode-base64-doesnt-properly-decode-utf-8-strings
-function b64EncodeUnicode(str) {
-    // first we use encodeURIComponent to get percent-encoded Unicode,
-    // then we convert the percent encodings into raw bytes which
-    // can be fed into btoa.
-    return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g,
-        function toSolidBytes(match, p1) {
-            return String.fromCharCode('0x' + p1);
-    }));
-}
-
-function b64DecodeUnicode(str) {
-    // Going backwards: from bytestream, to percent-encoding, to original string.
-    return decodeURIComponent(atob(str).split('').map(function(c) {
-        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-    }).join(''));
-}
-
-const DATA_META_SIZE = 8;
-const DATA_CONE_SIZE = 4;
-const DATA_PLAYER_SIZE = 4;
-const DATA_BALL_SIZE = 2;
-const DATA_MOMENT_SIZE = 12;
-
-function getDrillUrl() {
-    let url = window.location.pathname;
-    url += "?d=";
-
-    const drill = {
-        height: document.getElementById("field-container").offsetHeight,
-        cones: cones.map(c => ({
-            id: c.id,
-            colour: c.dataset.colour
-        })),
-        players: players.map(p => ({
-            id: p.id,
-            role: p.dataset.role,
-            number: p.getElementsByTagName("text")[0].textContent
-        })),
-        balls: balls.length,
-        notes: notes,
-        setupPositions: setupPositions,
-        timeline: timeline,
-        duration: document.getElementById("timeline-bar").max
-    }
-    const base64 = b64EncodeUnicode(JSON.stringify(drill));
-    console.log(base64);
-    url += base64;
-    window.open(url);
-    return url;
-}
-
-function loadDrillFromUrl() {
-    const queryString = window.location.search;
-    if (!queryString) return false;
-    const urlParams = new URLSearchParams(queryString);
-    if (!urlParams.has("d")) return false;
-    const drillString = urlParams.get("d");
-    const drillJson = b64DecodeUnicode(drillString);
-    const drill = JSON.parse(drillJson);
-    
-    console.log(drill);
-
-    console.log(document.getElementById("field-container"));
-    document.getElementById("field-container").style.height = "" + drill.height + "px";
-    console.log("" + drill.height + "px");
-    console.log(document.getElementById("field-container"));
-
-    for (let i = 0; i < drill.cones.length; i ++) {
-        addCone();
-    }
-    for (let i = 0; i < drill.cones.length; i ++) {
-        const cone = cones[i];
-        cone.id = drill.cones[i].id;
-        cone.dataset.colour = drill.cones[i].colour;
-    }
-
-    for (let i = 0; i < drill.players.length; i ++) {
-        addPlayer();
-    }
-    console.log(drill.players);
-    for (let i = 0; i < drill.players.length; i ++) {
-        console.log(drill.players[i]);
-        const player = players[i];
-        player.id = drill.players[i].id;
-        player.dataset.role = drill.players[i].role;
-        player.getElementsByTagName("text")[0].textContent = drill.players[i].number;
-    }
-
-    for (let i = 0; i < drill.balls; i ++) {
-        addBall();
-    }
-    notes = drill.notes;
-    setupPositions = drill.setupPositions;
-    timeline = drill.timeline;
-    document.getElementById("timeline-bar").max = parseFloat(drill.duration);
-
-    refreshTimelineEvents();
-    refreshCurrentNote();
-    document.getElementById("timeline-bar").value = 0;
-    scrubToTime(0);
-    deselectAll();
-
-    return true;
-}
 
 function setup() {
     const svg = document.getElementById("field");
