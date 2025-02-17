@@ -261,8 +261,12 @@ body {
     color: skyblue;
 }
 
-#arrow-head {
+#arrow-head-white {
     fill: rgba(255, 255, 255, 0.8);
+}
+
+#arrow-head-black {
+    fill: #000;
 }
 
 #motion-arrow {
@@ -313,4 +317,9 @@ body {
     -webkit-filter: drop-shadow( 0px 0px 4px rgba(255, 255, 128, 1));
     filter: drop-shadow( 0px 0px 4px rgba(255, 255, 128, 1));
     r: 10px;
+}
+
+#timeline-position {
+    stroke: blue;
+    stroke-width: 1;
 }

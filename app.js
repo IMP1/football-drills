@@ -5,9 +5,11 @@ const SVG_NS = "http://www.w3.org/2000/svg";
 const DRAGGABLE_CLASS = "draggable";
 const SELECTABLE_CLASS = "selectable";
 const ANIMATED_CLASS = "moveable";
+const MOVEMENT_INDICATOR_CLASS = "movement-indicator";
 
 const BALL_SIZE_GROUND = 10;
 const BALL_SIZE_AIR = 14;
+const PLAYER_SIZE = 16;
 
 const DEFAULT_BALL_SPEED = 128; // px/second
 const DEFAULT_PLAYER_SPEED = 96; // px/second
@@ -22,6 +24,8 @@ const MOVEMENT_TYPE_NOTE = "note";
 
 const PASS_HEIGHT_GROUNDED = 0;
 const PASS_HEIGHT_LOFTED = 1;
+
+const MOVEMENT_INDICATOR_LOOKAHEAD = 1.0; // seconds
 
 function getMousePosition(evt) {
     const svg = document.getElementById("field");
@@ -41,6 +45,18 @@ function getDistance(p1, p2) {
     const dx = p2.x - p1.x;
     const dy = p2.y - p1.y;
     return Math.sqrt(dx * dx + dy * dy);
+}
+
+function normalised(vx, vy) {
+    const magnitude = Math.sqrt(vx * vx + vy * vy);
+    return {
+        x: vx / magnitude,
+        y: vy / magnitude,
+    };
+}
+
+function length(vx, vy) {
+    return Math.sqrt(vx * vx + vy * vy);
 }
 
 function moveObject(obj, x, y) {
@@ -345,7 +361,7 @@ function startMotion(evt) {
     const svg = document.getElementById("field");
     let arrow = document.createElementNS(SVG_NS, "path");
     arrow.setAttribute("id", "motion-arrow");
-    arrow.setAttribute("marker-end", "url(#arrow-head)");
+    arrow.setAttribute("marker-end", "url(#arrow-head-white)");
     svg.appendChild(arrow);
 
     motionIndicator = {"origin": null, "destination": null, "entity": element, "type": type, "arrowElement": arrow};
@@ -404,7 +420,7 @@ function addPlayer() {
     player.dataset.role = PLAYER_ROLE_ATTACKER;
     // TODO: Other player data?
     const circle = document.createElementNS(SVG_NS, "circle");
-    circle.setAttribute("r", "16");
+    circle.setAttribute("r", PLAYER_SIZE);
     player.appendChild(circle);
     const number = document.createElementNS(SVG_NS, "text");
     number.textContent = (players.length + 1).toString();
@@ -566,6 +582,10 @@ function refreshTimelineEvents() {
         events.lastChild.remove();
     }
 
+    const timelineBar = document.createElementNS(SVG_NS, "line");
+    timelineBar.id = "timeline-position";
+    events.appendChild(timelineBar);
+
     const w = document.getElementById("timeline-bar").offsetWidth;
     const t = document.getElementById("timeline-bar").max;
 
@@ -576,6 +596,7 @@ function refreshTimelineEvents() {
         return (rows[rowIndex].filter(slot => !(slot.endTime < startTime || slot.startTime > endTime))).length > 0;
     }
 
+    let maxY = 0;
     let yOffset = 0;
     if (notes.length > 0) {
         yOffset += 48;
@@ -633,6 +654,7 @@ function refreshTimelineEvents() {
             line.setAttribute("y1", y + yOffset);
             line.setAttribute("x2", w * event.endTime / t);
             line.setAttribute("y2", y + yOffset);
+            maxY = Math.max(maxY, y + yOffset);
             line.setAttribute("stroke-width", "8");
             if (event.type === "pass") {
                 line.setAttribute("stroke", "white");
@@ -644,6 +666,11 @@ function refreshTimelineEvents() {
             events.appendChild(line);
         }
     }
+
+    timelineBar.setAttribute("x1", 0); // TODO: Get x pos of slider control
+    timelineBar.setAttribute("y1", -32);
+    timelineBar.setAttribute("x2", 0);
+    timelineBar.setAttribute("y2", maxY + 24);
 }
 
 function refreshCurrentNote() {
@@ -657,15 +684,53 @@ function refreshCurrentNote() {
 
 function scrubToTime(time) {
 
-    // TODO: Show upcoming movements in dashed lines
+    function addIndicatorArrow(field, event, entity, x, y) {
+        let r = PLAYER_SIZE;
+        if (event.type === MOVEMENT_TYPE_PASS) {
+            r = parseFloat(entity.getAttribute("r"));
+        }
+        r += 4;
+        if (length(event.destination.x - x, event.destination.y - y) > r) {
+            const v = normalised(event.destination.x - x, event.destination.y - y);
+            const ox = x + v.x * r;
+            const oy = y + v.y * r;
+            const line = document.createElementNS(SVG_NS, "path");
+            line.classList.add(MOVEMENT_INDICATOR_CLASS);
+            line.setAttribute("d", `M${ox} ${oy} L${event.destination.x} ${event.destination.y}`);
+            line.setAttribute("stroke", "black");
+            line.setAttribute("stroke-width", 3);
+            line.setAttribute("marker-end", "url(#arrow-head-black)");
+            if (event.type === MOVEMENT_TYPE_RUN) {
+                line.setAttribute("stroke-dasharray", 4);
+            } else if ( event.type == MOVEMENT_TYPE_PASS) {
+                line.setAttribute("stroke", "white");
+                line.setAttribute("marker-end", "url(#arrow-head-white)");
+            }
+            field.appendChild(line);
+        }
+    }
 
     settingUp = (time == 0);
+
+    const w = document.getElementById("timeline-bar").offsetWidth;
+    const t = document.getElementById("timeline-bar").max;
+    const timelineBar = document.getElementById("timeline-position");
+    timelineBar.setAttribute("x1", time * w / t);
+    timelineBar.setAttribute("x2", time * w / t);
 
     for (let entityId of Object.keys(setupPositions)) {
         const pos = setupPositions[entityId];
         const entity = document.getElementById(entityId);
         moveObject(entity, pos.x, pos.y);
     }
+
+    const field = document.getElementById("field");
+    const oldLines = field.getElementsByClassName(MOVEMENT_INDICATOR_CLASS);
+    for (let i = oldLines.length - 1; i >= 0; i --) {
+        oldLines[i].remove();
+    }
+
+    const objectsMoving = {};
 
     const times = Object.keys(timeline).map(parseFloat);
     let currentTime = 0;
@@ -681,6 +746,7 @@ function scrubToTime(time) {
             if (event.endTime < time) {
                 moveObject(entity, event.destination.x, event.destination.y);
             } else {
+                objectsMoving[entity.id] = true;
                 const t = (time - event.startTime) / (event.endTime - event.startTime);
                 const x = event.destination.x * t + event.origin.x * (1-t);
                 const y = event.destination.y * t + event.origin.y * (1-t);
@@ -691,7 +757,7 @@ function scrubToTime(time) {
                     const scale = BALL_SIZE_AIR - Math.pow(sqrtDifference * (2 * t - 1), 2);
                     entity.setAttribute("r", scale);
                 }
-
+                addIndicatorArrow(field, event, entity, x, y);
             }
         }
         if (times.filter(t => t > currentTime).length === 0) {
@@ -700,6 +766,29 @@ function scrubToTime(time) {
         nextTime = times.filter(t => t > currentTime).reduce((lowest, t) => t < lowest ? t : lowest);
         currentTime = nextTime;
     }
+
+    while (currentTime <= time + MOVEMENT_INDICATOR_LOOKAHEAD) {
+        const events = timeline[currentTime];
+        for (const event of events) {
+            if (event.type === MOVEMENT_TYPE_NOTE) {
+                continue;
+            }
+            const entity = document.getElementById(event.entityId);
+            if (objectsMoving[entity.id]) {
+                continue;
+            }
+            objectsMoving[entity.id] = true;
+            const x = event.origin.x;
+            const y = event.origin.y;
+            addIndicatorArrow(field, event, entity, x, y);
+        }
+        if (times.filter(t => t > currentTime).length === 0) {
+            break; // We've done the last one
+        }
+        nextTime = times.filter(t => t > currentTime).reduce((lowest, t) => t < lowest ? t : lowest);
+        currentTime = nextTime;
+    }
+
     refreshCurrentNote();
 }
 
@@ -837,7 +926,7 @@ function setup() {
     svg.addEventListener('touchcancel', endMotion);
     svg.addEventListener('click', function(evt) { selectElement(evt.target); });
     // document.getElementById("timeline-bar").addEventListener("change", scrubToTime);
-    document.getElementById("timeline-bar").addEventListener("input", function() { scrubToTime(document.getElementById("timeline-bar").value); });
+    document.getElementById("timeline-bar").addEventListener("input", function() { scrubToTime(document.getElementById("timeline-bar").valueAsNumber); });
     document.getElementById("delete-selected-item").addEventListener("click", deleteSelectedItem);
     addEventListener("resize", refreshTimelineEvents);
     document.addEventListener("keydown", function(evt) {
